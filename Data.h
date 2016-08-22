@@ -32,12 +32,12 @@ public:
     void SetHistoTitle(const TString &name,const TString &title,const TString &xaxis,const TString &yaxis);
     void SetDraw(const TString &histname, Float_t xrangemin, Float_t xrangemax, Float_t yrangemin, Float_t yrangemax, Color_t color);
     void Fit(const TString &histname,const TString &function, Float_t left, Float_t right);
-    void Fit(const TString &histname,const TString &function, Float_t left, Float_t right, Double_t *param);
+    void Fit(const TString &histname,const TString &function, Float_t left, Float_t right, Double_t *param, std::vector<bool> fix);
     Double_t GetFitValue(const TString &histname,const TString &paramname);
     Double_t GetFitError(const TString &histname,const TString &paramname);
     Double_t FindScaleParamOffPeak(const TString &histnamefit, const TString &histname);
     void Scale(const TString &histname, Double_t scale);
-    void CorrectSignal(const TString &histsignal,const TString &histbackground, Float_t peakleft, Float_t peakright);
+//    void CorrectSignal(const TString &histsignal,const TString &histbackground, Float_t peakleft, Float_t peakright);
     void Clone(const TString &histname, const TString &histnamenew);
 
 private:
@@ -50,10 +50,10 @@ private:
     Float_t *m_DataCutValue;
     std::vector<TH1D*> m_TH1D;
     std::vector<TString> m_TH1DName;
-    std::vector<TString> m_TH1D_FitName;
+    std::vector< std::vector<TString> > m_TH1D_FitName;
     std::vector<TString> m_TH1D_FitFunction;
-    std::vector<Double_t> m_TH1D_FitValue;
-    std::vector<Double_t> m_TH1D_FitError;
+    std::vector<Double_t*> m_TH1D_FitValue;
+    std::vector<Double_t*> m_TH1D_FitError;
 
 };
 

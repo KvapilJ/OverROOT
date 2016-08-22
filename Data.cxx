@@ -62,14 +62,10 @@ void Data::Fill(const TString &name, const TString &histname, bool sumw){
     for (Int_t entry=0;entry<(Int_t)m_tree->GetEntries();entry++){
         m_tree->GetEntry(entry);
         for(Int_t i=0; i<m_dataNo;i++){
-            if(m_dataCut[i]){
-                if(m_DataCutValue[2*i] <= m_data[i] and m_data[i] <= m_DataCutValue[2*i+1])
-                    cut[i] = true;
-                else
+            cut[i] = true;
+            if(m_dataCut[i] and (m_DataCutValue[2*i] > m_data[i] or m_data[i] > m_DataCutValue[2*i+1])){
                     cut[i] = false;
             }
-            else
-                cut[i] = true;
         }
         bool accept = true;
         for(Int_t i=0; i<m_dataNo;i++){
@@ -127,10 +123,14 @@ void Data::ListHisto(){
 }
 
 void Data::ListFits(){
-    Int_t temp = 0;
-    for(std::vector<TString>::iterator it = m_TH1D_FitName.begin(); it != m_TH1D_FitName.end(); ++it){
-        std::cout<<m_TH1D_FitName[temp]<<": "<< m_TH1D_FitValue[temp]<<"+-" <<m_TH1D_FitError[temp]<<std::endl;
-        temp++;
+    Int_t temp_i = 0;
+    Int_t temp_j = 0;
+    for(std::vector< std::vector<TString> >::iterator it = m_TH1D_FitName.begin(); it != m_TH1D_FitName.end(); ++it){
+        for(std::vector<TString>::iterator jt = m_TH1D_FitName[temp_j].begin(); jt != m_TH1D_FitName[temp_j].end(); ++jt){
+            std::cout<<m_TH1D_FitName[temp_j][temp_i]<<": "<< m_TH1D_FitValue[temp_j][temp_i]<<"+-" <<m_TH1D_FitError[temp_j][temp_i]<<std::endl;
+            temp_i++;
+        }
+        temp_j++;
     }
 }
 
@@ -146,49 +146,59 @@ void Data::SetDraw(const TString &histname, Float_t xrangemin, Float_t xrangemax
     m_TH1D[GetHistoID(histname)]->SetLineColor(color);
 }
 
-void Data::Fit(const TString &histname,const TString &function, Float_t left, Float_t right, Double_t *param){
+void Data::Fit(const TString &histname,const TString &function, Float_t left, Float_t right, Double_t *param, std::vector<bool> fix){
     TF1 *tempfunc = new TF1(function,function,left,right);
-    tempfunc->SetParameter(2,param[1]);
-    tempfunc->SetParameter(3,param[2]);
-    m_TH1D[GetHistoID(histname)]->Fit(tempfunc,"0R");
-
-    for(Int_t i = 0; i < (m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetNpar());i++){
-        m_TH1D_FitName.push_back(histname+" "+function+": "+m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParName(i));
-        m_TH1D_FitFunction.push_back(function);
-        m_TH1D_FitValue.push_back(m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParameter(i));
-        m_TH1D_FitError.push_back(m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParError(i));
+    Int_t fix_pos = 0;
+    TString fitoption;
+    if(param != NULL){
+        for(std::vector<bool>::iterator it = fix.begin(); it != fix.end(); ++it){
+            if(*it) tempfunc->FixParameter(fix_pos,param[fix_pos]);
+            fix_pos++;
+        }
+        fitoption = "B0R";
     }
+    else
+        fitoption = "0R";
+
+    m_TH1D[GetHistoID(histname)]->Fit(tempfunc,fitoption);
+    std::vector<TString> temp;
+    for(Int_t i = 0; i < (m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetNpar());i++){
+        temp.push_back(histname+": "+function+": "+m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParName(i));
+    }
+        m_TH1D_FitName.push_back(temp);
+        m_TH1D_FitFunction.push_back(function);
+        m_TH1D_FitValue.push_back(m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParameters());
+        m_TH1D_FitError.push_back(m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParErrors());
 }
 
 void Data::Fit(const TString &histname,const TString &function, Float_t left, Float_t right){
-    TF1 *tempfunc = new TF1(function,function,left,right);
-    //m_TH1D[GetHistoID(histname)]->Fit(function,"0","",left,right);
-    m_TH1D[GetHistoID(histname)]->Fit(tempfunc,"0R");
-
-    for(Int_t i = 0; i < (m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetNpar());i++){
-        m_TH1D_FitName.push_back(histname+" "+function+": "+m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParName(i));
-        m_TH1D_FitFunction.push_back(function);
-        m_TH1D_FitValue.push_back(m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParameter(i));
-        m_TH1D_FitError.push_back(m_TH1D[GetHistoID(histname)]->GetFunction(function)->GetParError(i));
-    }
-
-    //m_TH1D[GetHistoID(histname)]->Fit(function,"R","",1.7,2.1);
+    std::vector<bool> zero;
+    zero.push_back(0);
+    Fit(histname,function,left,right,NULL,zero);
 }
 
 Double_t Data::GetFitValue(const TString &histname,const TString &paramname){
-    Int_t temp = 0;
-    for(std::vector<TString>::iterator it = m_TH1D_FitName.begin(); it != m_TH1D_FitName.end(); ++it){
-        if(it->Contains(histname) and it->Contains(paramname)) return m_TH1D_FitValue[temp];
-        temp++;
+    Int_t temp_i = 0;
+    Int_t temp_j = 0;
+    for(std::vector< std::vector<TString> >::iterator it = m_TH1D_FitName.begin(); it != m_TH1D_FitName.end(); ++it){
+        for(std::vector<TString>::iterator jt = m_TH1D_FitName[temp_j].begin(); jt != m_TH1D_FitName[temp_j].end(); ++jt){
+            if(jt->Contains(histname) and jt->Contains(paramname)) return m_TH1D_FitValue[temp_j][temp_i];
+            temp_i++;
+        }
+        temp_j++;
     }
     return -1;
 }
 
 Double_t Data::GetFitError(const TString &histname,const TString &paramname){
-    Int_t temp = 0;
-    for(std::vector<TString>::iterator it = m_TH1D_FitName.begin(); it != m_TH1D_FitName.end(); ++it){
-        if(it->Contains(histname) and it->Contains(paramname)) return m_TH1D_FitError[temp];
-        temp++;
+    Int_t temp_i = 0;
+    Int_t temp_j = 0;
+    for(std::vector< std::vector<TString> >::iterator it = m_TH1D_FitName.begin(); it != m_TH1D_FitName.end(); ++it){
+        for(std::vector<TString>::iterator jt = m_TH1D_FitName[temp_j].begin(); jt != m_TH1D_FitName[temp_j].end(); ++jt){
+            if(jt->Contains(histname) and jt->Contains(paramname)) return m_TH1D_FitError[temp_j][temp_i];
+            temp_i++;
+        }
+        temp_j++;
     }
     return -1;
 }
@@ -204,7 +214,7 @@ Double_t Data::FindScaleParamOffPeak(const TString &histnamefit, const TString &
 void Data::Scale(const TString &histname, Double_t scale){
     m_TH1D[GetHistoID(histname)]->Scale(scale);
 }
-
+/*
 void Data::CorrectSignal(const TString &histsignal,const TString &histbackground, Float_t peakleft, Float_t peakright){
      Fit(histsignal,"gaus", peakleft,peakright);
      Scale(histbackground,FindScaleParamOffPeak(histsignal,histbackground));
@@ -217,7 +227,7 @@ void Data::CorrectSignal(const TString &histsignal,const TString &histbackground
      param[2] = GetFitValue(histsignal,"Sigma");
      Fit(histsignal+"_cor","gaus(0)+pol1(3)",1.7,2.1,param);
 }
-
+*/
 void Data::Clone(const TString &histname, const TString &histnamenew){
     m_TH1D.push_back((TH1D*)m_TH1D[GetHistoID(histname)]->Clone(histnamenew));
     m_TH1DName.push_back(histnamenew);
