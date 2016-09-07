@@ -1,6 +1,7 @@
 #include <iostream>
 #include "TFile.h"
 #include "TH1D.h"
+#include "TH2.h"
 #include "TCanvas.h"
 #include "TString.h"
 #include "TCollection.h"
@@ -19,6 +20,7 @@ public:
     void Create(const TString &name, Int_t nx, Int_t ny);
     int GetCanvasID(const TString &name);
     void Put(const TString &name, TH1D *th1);
+    void Put(const TString &name, TH2D *th2);
     void Put(const TString &name, TH1D *th1, Int_t position);
     void Flush(const TString &type);
 
@@ -66,6 +68,22 @@ void Canvas::Put(const TString &name, TH1D *th1){
     while ((object = next())){
         if(object->InheritsFrom(TF1::Class()))
             th1->GetFunction(object->GetName())->ResetBit(1<<9);
+    }
+    m_nHistoPerCanvas[GetCanvasID(name)]++;
+}
+
+void Canvas::Put(const TString &name, TH2D *th2){
+    m_canvas[GetCanvasID(name)]->cd(m_nHistoPerCanvas[GetCanvasID(name)]+1);
+    th2->Draw();
+    //th1->GetListOfFunctions()->Print();
+    //cout<<th1->GetListOfFunctions()->Last()->GetName();
+    //cout<<"is: "<<th1->GetListOfFunctions()->Last()->IsA()->InheritsFrom(TF1::Class());
+    //th1->GetFunction(th1->GetListOfFunctions()->Last()->GetName())->ResetBit(1<<9);
+    TIter next(th2->GetListOfFunctions());
+    TObject* object = 0;
+    while ((object = next())){
+        if(object->InheritsFrom(TF1::Class()))
+            th2->GetFunction(object->GetName())->ResetBit(1<<9);
     }
     m_nHistoPerCanvas[GetCanvasID(name)]++;
 }
