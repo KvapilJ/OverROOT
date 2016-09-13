@@ -9,7 +9,7 @@ Data::Data(const TString &fileName):
     m_dataNo = m_tree->GetListOfBranches()->GetSize();
     m_data = new Float_t[m_dataNo];
     m_dataName = new TString[m_dataNo];
-    m_dataCut = new bool[m_dataNo];
+    m_dataCut = new Bool_t[m_dataNo];
     m_DataCutValue = new Float_t[2*m_dataNo];
 
     //link branch adress and init cuts
@@ -44,40 +44,41 @@ TString Data::GetTreeName(){
 }
 
 //return pointer to histogram at given name
-TH1D *Data::Draw(const TString &name){
+TH1 *Data::Draw(const TString &name){
     return m_TH1D[GetHistoID(name)];
-}
+    //if(m_TH2D[GetHistoID(name)]) return m_TH2D[GetHistoID(name)];
+    //cout<<m_TH1D[GetHistoID(name)];
 
+}
+/*
 TH2D *Data::Draw2D(const TString &name){
     return m_TH2D[GetHistoID(name)];
 }
-
+*/
 //fill 1D histogram with name histname with variable name without sumw
-void Data::Fill(const TString &name, const TString &histname){
-    cout<<"1"<<endl;
-    Fill(name,histname,name,false,false);
+void Data::Fill(const TString &histname, const TString &name){
+    Fill(histname,name,name,false,false);
 }
 
 //fill 1D histogram with name histname with variable name with/out sumw
-void Data::Fill(const TString &name, const TString &histname, bool sumw){
-    cout<<"2"<<endl;
-    Fill(name,histname,name,false,sumw);
+void Data::Fill(const TString &histname, const TString &name, Int_t sumw){
+    //cout<<"is a string: "<<sumw->InheritsFrom(TString::Class())<<endl;
+    //cout<<"is a bool: "<<sumw->InheritsFrom(TDataType::Class())<<endl;
+    //cout<<sumw<<endl;
+    Fill(histname,name,name,false,sumw);
 }
 
 //fill 2D histogram with name histname with variable name without sumw
-void Data::Fill(const TString &name, const TString &histname, const TString &name2){
-    cout<<"3"<<endl;
-    Fill(name,histname,name2,true,false);
+void Data::Fill(const TString &histname, const TString &name, const TString &name2){
+    Fill(histname,name,name2,true,false);
 }
 
 //fill 2D histogram with name histname with variable name with/out sumw
-void Data::Fill(const TString &name, const TString &histname, const TString &name2, bool sumw){
-    cout<<"4"<<endl;
-    Fill(name,histname,name2,true,sumw);
+void Data::Fill(const TString &histname, const TString &name, const TString &name2, Int_t sumw){
+    Fill(histname,name,name2,true,sumw);
 }
 
-void Data::Fill(const TString &name, const TString &histname, const TString &name2,bool twod, bool sumw){
-    cout<<"5"<<endl;
+void Data::Fill(const TString &histname, const TString &name, const TString &name2,Bool_t twod, Int_t sumw){
     float min_x = 0;
     float max_x = 0;
     float min_y = 0;
@@ -89,7 +90,6 @@ void Data::Fill(const TString &name, const TString &histname, const TString &nam
         if(m_data[GetVariableID(name)]<min_x) min_x = m_data[GetVariableID(name)];
         else max_x = m_data[GetVariableID(name)];
     }
-    cout<<"6"<<endl;
     if(twod){
         for (Int_t entry=0;entry<(Int_t)m_tree->GetEntries();entry++){ //loop over entries and find min and max
             m_tree->GetEntry(entry);
@@ -100,14 +100,12 @@ void Data::Fill(const TString &name, const TString &histname, const TString &nam
         }
         m_TH2D.push_back(new TH2D(histname,histname,constant.GetDefaultBinNumber(),min_x,max_x,constant.GetDefaultBinNumber(),min_y,max_y)); //create histogram with given name and default binnumber and fill it
         m_TH2DName.push_back(histname); //store histogram name
-        cout<<"7"<<endl;
     }
     if(!twod){
         m_TH1D.push_back(new TH1D(histname,histname,constant.GetDefaultBinNumber(),min_x,max_x)); //create histogram with given name and default binnumber and fill it
         m_TH1DName.push_back(histname); //store histogram name
-        cout<<"8"<<endl;
     }
-    bool cut[m_dataNo];
+    Bool_t cut[m_dataNo];
     for (Int_t entry=0;entry<(Int_t)m_tree->GetEntries();entry++){ //loop over entries
         m_tree->GetEntry(entry);
         for(Int_t i=0; i<m_dataNo;i++){ //loop over variable
@@ -116,7 +114,7 @@ void Data::Fill(const TString &name, const TString &histname, const TString &nam
                     cut[i] = false;
             }
         }
-        bool accept = true;
+        Bool_t accept = true;
         for(Int_t i=0; i<m_dataNo;i++){ //loop over all cuts
             accept*=cut[i]; //true if variable passes all cuts
         }
@@ -125,13 +123,10 @@ void Data::Fill(const TString &name, const TString &histname, const TString &nam
             if(!twod) m_TH1D.back()->Fill(m_data[GetVariableID(name)]);
         }
     }
-    cout<<"9"<<endl;
-    if(sumw){ //if sumw need, sumw
+    if(sumw ==1){ //if sumw need, sumw
         if(twod) m_TH2D.back()->Sumw2();
         else m_TH1D.back()->Sumw2();
-        cout<<"10"<<endl;
     }
-    cout<<"11"<<endl;
 }
 
 //print all variables
@@ -224,12 +219,12 @@ void Data::SetDraw(const TString &histname, Float_t xrangemin, Float_t xrangemax
 }
 
 //fit histogram with function in left-right range with given parameters, that can be fixed
-void Data::Fit(const TString &histname,const TString &function, Float_t left, Float_t right, Double_t *param, std::vector<bool> fix){
+void Data::Fit(const TString &histname,const TString &function, Float_t left, Float_t right, Double_t *param, std::vector<Bool_t> fix){
     m_TF1.push_back(new TF1(histname+":"+function,function,left,right)); //create fit function
     Int_t fix_pos = 0;
     TString fitoption;
     if(param != NULL){
-        for(std::vector<bool>::iterator it = fix.begin(); it != fix.end(); ++it){//loop over parameters
+        for(std::vector<Bool_t>::iterator it = fix.begin(); it != fix.end(); ++it){//loop over parameters
             if(*it) m_TF1[GetFitID(histname+":"+function)]->SetParameter(fix_pos,param[fix_pos]); //fix them if required
             fix_pos++;
         }
@@ -243,7 +238,7 @@ void Data::Fit(const TString &histname,const TString &function, Float_t left, Fl
 
 //fit histogram with fiven function in range left-right
 void Data::Fit(const TString &histname,const TString &function, Float_t left, Float_t right){
-    std::vector<bool> zero;
+    std::vector<Bool_t> zero;
     zero.push_back(0);
     Fit(histname,function,left,right,NULL,zero);
 }
@@ -290,7 +285,7 @@ void Data::CorrectSignal(const TString &histsignal,const TString &histbackground
      param[0] = GetFitValue(histsignal,"gaus","Constant");
      param[1] = GetFitValue(histsignal,"gaus","Mean");
      param[2] = GetFitValue(histsignal,"gaus","Sigma");
-     std::vector<bool> b;
+     std::vector<Bool_t> b;
      b.push_back(0);b.push_back(1);b.push_back(1);
      Fit(histsignal+"_cor","gaus(0)+pol1(3)",1.7,2.1,param,b);
      param[0] = GetFitValue(histsignal+"_cor","gaus(0)+pol1(3)","p3");

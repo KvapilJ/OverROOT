@@ -1,6 +1,6 @@
 #include <iostream>
 #include "TFile.h"
-#include "TH1D.h"
+#include "TH1.h"
 #include "TH2.h"
 #include "TCanvas.h"
 #include "TString.h"
@@ -19,8 +19,8 @@ public:
     void Create(const TString &name);
     void Create(const TString &name, Int_t nx, Int_t ny);
     int GetCanvasID(const TString &name);
-    void Put(const TString &name, TH1D *th1);
-    void Put(const TString &name, TH2D *th2);
+    void Put(const TString &name, TH1 *th1);
+    //void Put(const TString &name, TH2D *th2);
     void Put(const TString &name, TH1D *th1, Int_t position);
     void Flush(const TString &type);
 
@@ -56,7 +56,7 @@ int Canvas::GetCanvasID(const TString &name){
     return -1;
 }
 
-void Canvas::Put(const TString &name, TH1D *th1){
+void Canvas::Put(const TString &name, TH1 *th1){
     m_canvas[GetCanvasID(name)]->cd(m_nHistoPerCanvas[GetCanvasID(name)]+1);
     th1->Draw();
     //th1->GetListOfFunctions()->Print();
@@ -71,7 +71,7 @@ void Canvas::Put(const TString &name, TH1D *th1){
     }
     m_nHistoPerCanvas[GetCanvasID(name)]++;
 }
-
+/*
 void Canvas::Put(const TString &name, TH2D *th2){
     m_canvas[GetCanvasID(name)]->cd(m_nHistoPerCanvas[GetCanvasID(name)]+1);
     th2->Draw();
@@ -86,7 +86,7 @@ void Canvas::Put(const TString &name, TH2D *th2){
             th2->GetFunction(object->GetName())->ResetBit(1<<9);
     }
     m_nHistoPerCanvas[GetCanvasID(name)]++;
-}
+}*/
 
 void Canvas::Put(const TString &name, TH1D *th1, Int_t position){
     m_canvas[GetCanvasID(name)]->cd(position);
